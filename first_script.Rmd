@@ -1,0 +1,58 @@
+---
+title: "first_script"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r Load packages and source functions, message = FALSE}
+
+library(brms)
+library(rstan)
+library(zoo)
+library(parallel)
+library(tidybayes)
+library(tidyverse)
+library(corrr)
+library(janitor)
+
+source("Functions/get_data_and_clean_Function.R")
+source("Functions/games_played_Function.R")
+
+```
+
+
+```{r Get data, messsage = FALSE}
+
+# Get data from 2002 to be able to calculate games_played
+afl_data <- GetDataCleanFitzRoy()
+
+# Calculate games played using GamesPlayed function
+afl_data2 <- GamesPlayed(afl_data)
+
+```
+
+```{r Feature creation}
+# create winning team variable
+afl_data_3 <- afl_data2 %>% 
+      mutate(winning_team = if_else(team == match_winner, 1, 0)) %>%
+      relocate(c(winning_team, match_winner), .after = away_team)
+
+glimpse(afl_data_3)
+```
+
+
+
+```{r Correaltions}
+
+cor_data <- afl_data_3 %>% select_if(is.numeric)
+correlations_df <- corrr::correlate(cor_data)
+bv_cors <- focus(correlations_df, brownlow_votes)
+bv_cors <- arrange(bv_cors, brownlow_votes) 
+bv_cors <- mutate(bv_cors, brownlow_votes = round(brownlow_votes,2))
+```
+
