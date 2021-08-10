@@ -11,8 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r Load packages and source functions, message = FALSE}
 
+library(tidyverse)
+library(corrr)
+library(easystats)
 library(brms)
 library(rstan)
+library(viridis)
+
 library(zoo)
 library(parallel)
 library(tidybayes)
@@ -31,28 +36,681 @@ source("Functions/games_played_Function.R")
 # Get data from 2002 to be able to calculate games_played
 afl_data <- GetDataCleanFitzRoy()
 
+# get 2020 + 2021 Supercoach data
+sc_data  <- update_footywire_stats()
+  
+sc_data2 <-  sc_data %>% filter(Season == 2020 | Season == 2021) %>%
+             mutate(Round  = case_when(Round == "Grand Final" ~ 28,                                                                        Round == "Preliminary Final" ~ 27,
+                                       Round == "Preliminary Finals" ~ 27,
+                                       Round == "Semi Final" ~ 26,
+                                       Round == "Semi Finals" ~ 26,
+                                       Round == "Elimination Final" ~ 25,
+                                       Round == "Qualifying Final" ~ 25,
+                                       Round == "Finals Week 1" ~ 25,
+                                       Round == "Round 24" ~ 24,
+                                       Round == "Round 23" ~ 23,
+                                       Round == "Round 22" ~ 22,
+                                       Round == "Round 21" ~ 21,
+                                       Round == "Round 20" ~ 20,
+                                       Round == "Round 19" ~ 19,
+                                       Round == "Round 18" ~ 18,
+                                       Round == "Round 17" ~ 17,
+                                       Round == "Round 16" ~ 16,
+                                       Round == "Round 15" ~ 15,
+                                       Round == "Round 14" ~ 14,
+                                       Round == "Round 13" ~ 13,
+                                       Round == "Round 12" ~ 12,
+                                       Round == "Round 11" ~ 11,
+                                       Round == "Round 10" ~ 20,
+                                       Round == "Round 9" ~ 9,
+                                       Round == "Round 8" ~ 8,
+                                       Round == "Round 7" ~ 7,
+                                       Round == "Round 6" ~ 6,
+                                       Round == "Round 5" ~ 5,
+                                       Round == "Round 4" ~ 4,
+                                       Round == "Round 3" ~ 3,
+                                       Round == "Round 2" ~ 2,
+                                       Round == "Round 1" ~ 1)) %>%
+  mutate(helper = paste0(Player,"_", Season,"_", Round,"_",Team)) %>%
+  select(helper, SC)
+  
 # Calculate games played using GamesPlayed function
-afl_data2 <- GamesPlayed(afl_data)
+afl_data_2 <- GamesPlayed(afl_data)
 
+
+# combine supercoach data with orginal data frame
+orignal_data_2020_2021  <- afl_data_2 %>% filter(season == 2020 | season == 2021)
+orignal_data_below_2020 <- afl_data_2 %>% filter(season <= 2020)
+
+binded_2020_2021 <- merge(sc_data2, orignal_data_2020_2021) %>%
+                    select(-supercoach) %>%
+                    dplyr::rename(supercoach = SC)
+
+afl_data_3 <- rbind(orignal_data_below_2020, binded_2020_2021)
 ```
 
 ```{r Feature creation}
 # create winning team variable
-afl_data_3 <- afl_data2 %>% 
+afl_data_4 <- afl_data_3 %>% 
       mutate(winning_team = if_else(team == match_winner, 1, 0)) %>%
       relocate(c(winning_team, match_winner), .after = away_team)
 
-glimpse(afl_data_3)
+
+# create cumulative
+afl_data_4 <- afl_data_4 %>% 
+  arrange(date) %>%
+  group_by(id) %>%
+  mutate(previous_brownlow_vote    = lag(brownlow_votes),
+         cumulative_brownlow_votes = cumsum(brownlow_votes) - brownlow_votes,
+         relative_brownlow_votes   = cumulative_brownlow_votes/games_played) %>%
+  select(relative_brownlow_votes,brownlow_votes, cumulative_brownlow_votes, everything()) %>%
+  ungroup()
+
+
+# create umpire_brownlow
+
+
 ```
 
 
 
 ```{r Correaltions}
+last_five_seasons <- dplyr::filter(afl_data_4, season >2018)
 
-cor_data <- afl_data_3 %>% select_if(is.numeric)
+
+data <- last_five_seasons
+cor_data <- data %>% select_if(is.numeric)
 correlations_df <- corrr::correlate(cor_data)
 bv_cors <- focus(correlations_df, brownlow_votes)
 bv_cors <- arrange(bv_cors, brownlow_votes) 
 bv_cors <- mutate(bv_cors, brownlow_votes = round(brownlow_votes,2))
 ```
 
+```{r}
+
+# Variables
+# Supercoach
+# DFS
+# Rating points
+# Kicks
+# Disposals
+# Effective Kicks
+# Score involvements
+# Effective disposals
+# Hitouts
+# Goals
+# shots_at_goal
+# CP
+# marks_I50
+# metres_gained
+# handballs
+# clearances
+# marks
+#intercept_marks
+
+# ALL
+handballs	0.25			
+clearances	0.27			
+kicks	0.28			
+effective_disposals	0.30			
+score_involvements	0.30			
+CP	0.30			
+rating_points	0.32			
+disposals	0.33			
+dfs_score	0.38			
+supercoach	0.44	
+
+# KEYD
+intercept_marks	0.15			
+UP	0.16			
+rating_points	0.17			
+effective_kicks	0.18			
+kicks	0.18			
+marks	0.18			
+effective_disposals	0.20			
+disposals	0.20			
+dfs_score	0.22			
+supercoach	0.26
+
+# GEND
+marks	0.16			
+rating_points	0.17			
+metres_gained	0.17			
+effective_kicks	0.19			
+kicks	0.20			
+UP	0.21			
+effective_disposals	0.22			
+disposals	0.23			
+dfs_score	0.23			
+supercoach	0.27
+
+# MID
+clearances	0.31			
+handballs	0.31			
+score_involvements	0.32			
+kicks	0.32			
+CP	0.34			
+rating_points	0.35			
+effective_disposals	0.37			
+disposals	0.40			
+dfs_score	0.41			
+supercoach	0.48	
+
+# MIDF
+CP	0.35			
+effective_kicks	0.36			
+metres_gained	0.37			
+score_involvements	0.37			
+rating_points	0.39			
+effective_disposals	0.39			
+kicks	0.41			
+disposals	0.43			
+dfs_score	0.46			
+supercoach	0.54
+
+# GENF
+marks_I50	0.22			
+effective_kicks	0.22			
+kicks	0.23			
+disposals	0.23			
+score_involvements	0.29			
+shots_at_goal	0.29			
+dfs_score	0.31			
+rating_points	0.31			
+goals	0.36			
+supercoach	0.37
+
+# KEYF
+metres_gained	0.31			
+effective_kicks	0.32			
+kicks	0.33			
+marks_I50	0.34			
+score_involvements	0.36			
+shots_at_goal	0.39			
+rating_points	0.40			
+dfs_score	0.43			
+goals	0.45			
+supercoach	0.50
+
+# RUCK
+CP	0.24			
+hitouts	0.24			
+effective_kicks	0.26			
+rating_points	0.27			
+kicks	0.27			
+effective_disposals	0.27			
+score_involvements	0.28			
+disposals	0.30			
+dfs_score	0.37			
+supercoach	0.41	
+```
+
+
+```{r Test VIF in LM}
+
+#KEYD                  #GEND                #MID                 #RUCK              #MIDF              #GENF              #KEYF
+# supercoach           supercoach           supercoach           supercoach         supercoach         supercoach         supercoach
+# hitouts              hitouts              hitouts              hitouts            hitouts            hitouts            hitouts
+# goals                goals                goals                goals              goals              goals              goals
+# marks_I50            marks_I50            marks_I50            marks_I50          marks_I50          marks_I50          marks_I50
+# clearances           clearances           clearanes            clearanes          clearanes          clearanes          clearances
+# marks                marks                marks                marks              marks              marks              marks
+# handballs            handballs            handballs            handballs          handballs          handballs          handballs
+# metres_gained        metres_gained        metres_gained        metres_gained      metres_gained      metres_gained      metres_gained
+# intercept_marks      intercept_marks      intercept_marks      intercept_marks    intercept_marks    intercept_marks    interept_marks
+# score_involvements   score_involvements   score_involvements   score_involvements score_involvements score_involvements ------------
+
+
+
+
+
+#KEYD
+keyd_df <- afl_data_3 %>% dplyr::filter(position == "KeyD")
+keyd_model <- lm(brownlow_votes ~ disposals + hitouts + goals + marks_I50 + clearances + marks  + metres_gained + intercept_marks + score_involvements + CP, data = keyd_df)
+check_collinearity(keyd_model)
+# removed = effective_kicks + kicks + effective disposals + disposals + rating_points + shots_at_goal
+
+# GEND
+gend_df <- afl_data_3 %>% dplyr::filter(position == "GenD")
+gend_model <- lm(brownlow_votes ~ disposals + hitouts + goals + shots_at_goal + marks_I50 + clearances + marks +  metres_gained + intercept_marks + score_involvements , data = gend_df)
+check_collinearity(gend_model)
+# removed = disposals + effective_disposals + rating_points
+
+#MID
+mid_df <- afl_data_3 %>% dplyr::filter(position == "Mid")
+mid_model <- lm(brownlow_votes ~ disposals + hitouts + goals + shots_at_goal + marks_I50 + clearances + marks  + metres_gained + intercept_marks + score_involvements, data = mid_df)
+check_collinearity(mid_model)
+# removed = effective_disposals + 
+
+
+#RUCK
+ruck_df <- afl_data_3 %>% dplyr::filter(position == "Ruck")
+ruck_model <- lm(brownlow_votes ~ disposals + effective_kicks + hitouts + goals + shots_at_goal + marks_I50 + clearances + marks  + metres_gained + intercept_marks + score_involvements, data = ruck_df)
+check_collinearity(ruck_model)
+
+
+#MIDF
+midf_df <- afl_data_3 %>% dplyr::filter(position == "MidF")
+midf_model <- lm(brownlow_votes ~ supercoach + hitouts + goals + shots_at_goal + marks_I50 + clearances + marks + handballs + metres_gained + intercept_marks + score_involvements, data = midf_df)
+check_collinearity(midf_model)
+
+#GENF
+genf_df <- afl_data_3 %>% dplyr::filter(position == "GenF")
+genf_model <- lm(brownlow_votes ~ supercoach  + hitouts + goals + marks_I50 + clearances + marks + handballs + metres_gained + intercept_marks + score_involvements + CP, data = genf_df)
+check_collinearity(genf_model)
+
+#KEYF
+keyf_df <- afl_data_3 %>% dplyr::filter(position == "KeyF")
+keyf_model <- lm(brownlow_votes ~ supercoach + hitouts + goals + marks_I50 + clearances + marks + handballs + metres_gained + intercept_marks , data = keyf_df)
+check_collinearity(keyf_model)
+
+
+check_collinearity(model)
+```
+
+```{r Test distributions}
+
+# correlations iwth brownlow vites above 0.25 and VIF below 5
+# supercoach
+# disposals
+# rating_points
+# CP
+# score_involvements - RIGHT TAILED SKEWED
+# clearances - RIGHT TAILED SKEWED
+
+ggplot(data, aes(x = supercoach)) +
+  geom_histogram() +
+  facet_wrap(~ position)
+```
+
+```{r Exploration of Brownlow Votes}
+no_zeros <- filter(data, brownlow_votes > 0)
+ggplot(no_zeros, aes(x = brownlow_votes)) +
+  geom_bar() +
+  facet_wrap(~ position)
+
+```
+
+```{r Exploration Plots}
+
+ data <- filter(afl_data_4, season == 2021)
+ noruck <- filter(data, position == "Ruck")
+
+# Disposals
+ggplot(data, aes(x = brownlow_votes, y = relative_brownlow_votes, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) 
+
+# hitouts
+ggplot(noruck, aes(x = brownlow_votes, y = hitouts, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+
+# goals
+ggplot(data, aes(x = brownlow_votes, y = goals, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+# marks inside 50
+ggplot(data, aes(x = brownlow_votes, y = marks_I50, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+# clearances
+ggplot(data, aes(x = brownlow_votes, y = winning_team, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+
+
+# marks
+ggplot(data, aes(x = brownlow_votes, y = marks, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+# handballs
+ggplot(data, aes(x = brownlow_votes, y = handballs, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+
+# metres gained
+ggplot(data, aes(x = brownlow_votes, y = metres_gained, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+# metres gained
+ggplot(data, aes(x = brownlow_votes, y = metres_gained, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+# score_involvements
+ggplot(data, aes(x = brownlow_votes, y = score_involvements, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+
+# intercept_marks
+ggplot(data, aes(x = brownlow_votes, y = intercept_marks, col = position)) +
+  geom_point(position = 'jitter') +
+  geom_smooth(method = lm,
+              se     = FALSE,
+              size   = .5, 
+              alpha  = .8) # to add regression line
+```
+
+
+NOTES:
+- Supercoach: similar slopes, different intercepts (could add different slopes)
+- Hitouts: ruck different slope and intercept from all other positions
+- Goals: differnt slope and intercepts (KeyF, GenF, MidF all positive correlation, other position no correlation)
+- Marks I50 same as Goals
+- Marks same slopes differnt intercepts
+- Clearances different slopes and intercepts
+- Handballs: same slopes differnt intercepts
+- Metres gained: same slopes differnt intercepts
+- Score involvements: different slopes and intercepts
+- Intercept marks: different slopes and intercepts
+
+
+
+```{r Data manupulation before model}
+
+# Fix 2020 statistics that are important
+afl_data_not_2020 <- filter(afl_data_4, season != 2020)
+afl_data_2020 <- afl_data_4 %>%
+  filter(season == 2020) %>%
+  mutate(disposals = disposals * 1.2,
+         CP        = CP * 1.2,
+         score_involvements = score_involvements * 1.2,
+         clearances = clearances * 1.2)
+
+afl_data_4 <- rbind(afl_data_not_2020, afl_data_2020)
+
+
+# Convert brownlow votes into factors
+afl_data_4$brownlow_votes <- factor(afl_data_4$brownlow_votes, levels = c(0, 1, 2, 3), ordered = TRUE)
+  
+
+# Log transform score_involvements and clearances 
+```
+
+
+
+```{r Run Bayesian Multilevel Model 2}
+
+training_test <- afl_data_4 %>% filter(season > 2017 & season < 2021) 
+test_test     <- afl_data_4 %>% filter(season == 2021) 
+
+#####################
+# CREATE / RUN MODEL
+#####################
+
+# Assumptions
+#1. removed disposals from random effect of postion as all positions have similar slopes and intercepts
+#2.
+
+tictoc::tic()
+ncores = detectCores() # find how many processing cores the computer has
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+------------------------------------------------
+# score_involvements - RIGHT TAILED SKEWED
+# clearances - RIGHT TAILED SKEWED
+------------------------------------------------
+
+  
+# Adjacent Category  
+mod2a <- brm(brownlow_votes ~ supercoach +
+             (1 | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+# Adjacent Category with Category-Specific Effects
+mod2b <- brm(brownlow_votes ~ cs(supercoach) +
+             (1 | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+# Adjacent Category with Category-Specific Effects with RATING POINTS
+mod2c <- brm(brownlow_votes ~ cs(rating_points) +
+             (1 | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+# Adjacent Category with winning_team and Category-Specific Effects with Supercoach
+mod2d <- brm(brownlow_votes ~ cs(supercoach) + winning_team +
+             (1 + winning_team | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+# Adjacent Category with winning_team and Category-Specific Effects with Supercoach
+mod2e <- brm(brownlow_votes ~ cs(supercoach) + cs(winning_team) +
+             (1 + winning_team | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+# Adjacent Category with winning_team and Category-Specific Effects with Supercoach
+mod2f <- brm(brownlow_votes ~ cs(supercoach + winning_team + disposals) +
+             (1 + winning_team + disposals | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+# Adjacent Category with cs(winning_team) + sc + d + si
+mod2g <- brm(brownlow_votes ~ cs(winning_team) + supercoach + disposals + score_involvements +
+             (1 + winning_team | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+
+
+# Adjacent Category with cs(winning_team) + sc + d +  + metres_gained
+mod2h <- brm(brownlow_votes ~ cs(winning_team) + supercoach + disposals + score_involvements + metres_gained +
+             (1 + winning_team | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+
+# Adjacent Category with cs(winning_team) + sc + d +  + metres_gained
+mod2i <- brm(brownlow_votes ~ cs(winning_team + goals) + supercoach + disposals + score_involvements +
+             (1 + winning_team + goals | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+
+# Adjacent Category with cs(winning_team) + sc + d +  + metres_gained
+mod2j <- brm(brownlow_votes ~ cs(winning_team + goals + relative_brownlow_votes) + supercoach + disposals + score_involvements +
+             (1 + winning_team + goals + relative_brownlow_votes | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+
+tictoc::tic()
+# TRAINING on last 3 season 2018,2019,2020 - ADDED MORE DATA comapred to ONE SEAON IN LAST 10 MODELS
+mod2k <- brm(brownlow_votes ~ cs(winning_team + goals + relative_brownlow_votes) + supercoach + disposals + score_involvements + 
+             (1 + winning_team + goals + relative_brownlow_votes | position),
+           data    = training_test,
+           family  = acat(),
+           iter    = 2000,         # maybe look at increasesing this 
+           chains  = ncores,
+           cores   = ncores,
+           control = list(adapt_delta = 0.98))
+
+tictoc::toc()
+# DIVERGENT TRANSITIONS: if there is a warning, increase the alpha_delta (deafult = 0.8). Will slow down model but decrease divergent transitons. Can also lowerinh the number of iterations
+# CHECK RHAT:  only use the sample if R-hat is less than 1.1 
+# CHECK Effect Sample: should be as large as possible. 1000 or above is usally fine
+# ESS:   the higher the ESS the better.  Bulk and Tail ESS should be greater than 100 times the number of chains. 4 chains = 400 Bulk-ESS
+
+# FIXES: if rhat or ESS are not meet. Try increasing the iterations (default = 2000)
+
+
+# ASSESSING THE MODEL --------------------------------------------------------------------------------------------------
+
+model <- mod2k
+
+# use summary to look at rhat (needs to be at 1 or very close to.) and ESS (needs to be at around 1000
+summary(model)
+
+# use this for continous models as it shows if the predictive runs are similar to the orginal data
+pp_check(model, nsamples = 2)        
+
+# use this to look at the catipillars - they should be hairy showing the runs have converged/mixed
+plot(model)            
+
+# use the below to check the posterior results
+marginal_effects(mod2b)
+conditional_effects(model, categorical = TRUE)
+
+
+# use ranef to estimate the relative size of the randim effects per group
+ranef(model) 
+
+
+
+# Comparing models - low the score the better
+looa <- loo(mod2a)
+loob <- loo(mod2b)
+looc <- loo(mod2c)
+lood <- loo(mod2d)
+looe <- loo(mod2e)
+loof <- loo(mod2e)
+loog <- loo(mod2g)
+looh <- loo(mod2h)
+looi <- loo(mod2i)
+looj <- loo(mod2j)
+look <- loo(mod2k)
+loo_compare(looa, loob, looc, lood, looe, loog, looh, looi, looj)
+
+
+  # if two models are similar LOO and from the same family it shows the advanced model is not providing any extra infomation
+tictoc::toc()
+```
+
+
+```{r Predictions}
+
+# filter if want to look at one round
+test_test2 <- filter(test_test, round == 20 & team == c("Gold Coast", "Melbourne"))
+# test_test2$brownlow_votes <- as.numeric(test_test2$brownlow_votes)
+
+# Run predictions
+predictions1 <- predicted_draws(mod2b, test_test2, n = 100, allow_new_levels = FALSE)
+
+
+# Calculate average per player, probility of 1,2 & 3 votes
+predictions2 <- predictions1 %>% 
+  ungroup () %>% 
+  select(c(.prediction, helper, player, supercoach, disposals, goals, score_involvements, winning_team)) %>%
+  mutate(total_3 = sum( .prediction == 3),
+         total_2 = sum( .prediction == 2),
+         total_1 = sum( .prediction == 1),
+         total_0 = sum( .prediction == 0)) %>%
+  group_by(helper) %>%
+  mutate(player_3 = sum( .prediction == 3),
+         player_2 = sum( .prediction == 2),
+         player_1 = sum( .prediction == 1),
+         player_0 = sum( .prediction == 0)) %>%
+  arrange(.prediction, ) %>%
+  filter(duplicated(helper) == FALSE) %>%
+  mutate(avg_votes     = ((player_3 *3) + (player_2 * 2) + (player_1)) / 100,
+         vote_3_chance = (player_3 / total_3) * 100,
+         vote_2_chance = round((player_2 / total_2) * 100,2),
+         vote_1_chance = round((player_1 / total_1) * 100,2),
+         vote_0_chance = 100 - vote_3_chance - vote_2_chance - vote_1_chance) %>%
+  select(helper, player, avg_votes, vote_3_chance, vote_2_chance, vote_1_chance, vote_0_chance, supercoach, disposals, goals, score_involvements, winning_team)
+  
+
+glimpse(test_test2)
+glimpse(test_test)
+```
+
+
+######## NOTES
+# add umpires variables
+# add distinct apperarance
+# add coach votes/bests
+# add overall margin
+# add quarter by quarter margin
+
+
+# IDEAS / TO DO
+#  make umpires-brownlow dummy variable, run correaltion with each individal umpire and variables (also do umpire group and variables)
+#
+
+NOTES
+# Cumulative model: can have negative values and cant use category-specific events (where predictors have different effects in each category)
+# - category specific = use cs()
+# - logistic = logistic distribution
+# - probit  = normal distribution

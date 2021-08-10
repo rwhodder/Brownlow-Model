@@ -37,7 +37,7 @@ GetDataCleanFitzRoy <- function() {
   mydb <- dbConnect(MySQL(), user = "root", password = "yourpassword", dbname = "dfs_db", host = "localhost")
   player_info           <- dbReadTable(mydb, "player_id")
   
-
+glimpse(dat)
  # Clean data
   
   player_stats <- 
