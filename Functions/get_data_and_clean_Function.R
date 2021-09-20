@@ -31,15 +31,36 @@ GetDataCleanFitzRoy <- function() {
   current_year <- year(current_date)
   
   # get player stats from fitzRoy
-  dat <- fitzRoy::get_fryzigg_stats(start = 2002, end = current_year)
+  df_2002 <- fitzRoy::fetch_player_stats_fryzigg(2002)
+  df_2003 <- fitzRoy::fetch_player_stats_fryzigg(2003)
+  df_2004 <- fitzRoy::fetch_player_stats_fryzigg(2004)
+  df_2005 <- fitzRoy::fetch_player_stats_fryzigg(2005)
+  df_2006 <- fitzRoy::fetch_player_stats_fryzigg(2006)
+  df_2007 <- fitzRoy::fetch_player_stats_fryzigg(2007)
+  df_2008 <- fitzRoy::fetch_player_stats_fryzigg(2008)
+  df_2009 <- fitzRoy::fetch_player_stats_fryzigg(2009)
+  df_2010 <- fitzRoy::fetch_player_stats_fryzigg(2010)
+  df_2011 <- fitzRoy::fetch_player_stats_fryzigg(2011)
+  df_2012 <- fitzRoy::fetch_player_stats_fryzigg(2012)
+  df_2013 <- fitzRoy::fetch_player_stats_fryzigg(2013)
+  df_2014 <- fitzRoy::fetch_player_stats_fryzigg(2014)
+  df_2015 <- fitzRoy::fetch_player_stats_fryzigg(2015)
+  df_2016 <- fitzRoy::fetch_player_stats_fryzigg(2016)
+  df_2017 <- fitzRoy::fetch_player_stats_fryzigg(2017)
+  df_2018 <- fitzRoy::fetch_player_stats_fryzigg(2018)
+  df_2019 <- fitzRoy::fetch_player_stats_fryzigg(2019)
+  df_2020 <- fitzRoy::fetch_player_stats_fryzigg(2020)
+  df_2021 <- fitzRoy::fetch_player_stats_fryzigg(2021)
   
-  # connect to mySQL db and get player info
-  mydb <- dbConnect(MySQL(), user = "root", password = "yourpassword", dbname = "dfs_db", host = "localhost")
-  player_info           <- dbReadTable(mydb, "player_id")
+  dat <- rbind(df_2002, df_2003, df_2004, df_2005, df_2006, df_2007, df_2008, df_2009, df_2010, df_2011, df_2012, df_2013, df_2014, df_2015, df_2016, df_2017, df_2018, df_2019, df_2020, df_2021)
   
-glimpse(dat)
+  # # connect to mySQL db and get player info
+  # mydb <- dbConnect(MySQL(), user = "root", password = "yourpassword", dbname = "dfs_db", host = "localhost")
+  # player_info           <- dbReadTable(mydb, "player_id")
+  # 
+
  # Clean data
-  
+
   player_stats <- 
     dat %>%
     
@@ -66,7 +87,7 @@ glimpse(dat)
                               match_round == "13" ~ 13,
                               match_round == "12" ~ 12,
                               match_round == "11" ~ 11,
-                              match_round == "10" ~ 20,
+                              match_round == "10" ~ 10,
                               match_round == "9" ~ 9,
                               match_round == "8" ~ 8,
                               match_round == "7" ~ 7,
@@ -191,135 +212,160 @@ glimpse(dat)
                                      player == "Thomas Hutchesson" ~ "Tom Hutchesson",
                                      player == "Xavier O'Neill" ~ "Xavier ONeill",
                                      player == "Matt Owies" ~ "Matthew Owies",
+                                     player == "Tom J. Lynch" ~ "Tom Lynch",
+                                     player == "Josh J. Kennedy" ~ "Josh Kennedy",
+                                     player == "Bailey J. Williams" ~ "Bailey Williams",
+                                     player == "Sam J. Reid" ~ "Sam Reid",
+                                     player == "Callum M. Brown" ~ "Callum Brown",
                                      TRUE ~ player),
-      # # format team name
-      # player_team = case_when(player_team == "Geelong"                ~ "GEE",
-      #                         player_team == "Hawthorn"               ~ "HAW",
-      #                         player_team == "Brisbane Lions"         ~ "BRI",
-      #                         player_team == "Collingwood"            ~ "COL",
-      #                         player_team == "North Melbourne"        ~ "NME",
-      #                         player_team == "Fremantle"              ~ "FRE",
-      #                         player_team == "Essendon"               ~ "ESS",
-      #                         player_team == "Carlton"                ~ "CAR",
-      #                         player_team == "Sydney"                 ~ "SYD",
-      #                         player_team == "Gold Coast"             ~ "GCS",
-      #                         player_team == "Greater Western Sydney" ~ "GWS",
-      #                         player_team == "Melbourne"              ~ "MEL",
-      #                         player_team == "Western Bulldogs"       ~ "WBD",
-      #                         player_team == "West Coast"             ~ "WCE",
-      #                         player_team == "St Kilda"               ~ "STK",
-      #                         player_team == "Adelaide"               ~ "ADE",
-      #                         player_team == "Port Adelaide"          ~ "POR",
-      #                         player_team == "Richmond"               ~ "RIC") ,
+      # format team name
+      player_team = case_when(player_team == "Geelong"                ~ "GEE",
+                              player_team == "Hawthorn"               ~ "HAW",
+                              player_team == "Brisbane Lions"         ~ "BRI",
+                              player_team == "Collingwood"            ~ "COL",
+                              player_team == "North Melbourne"        ~ "NME",
+                              player_team == "Fremantle"              ~ "FRE",
+                              player_team == "Essendon"               ~ "ESS",
+                              player_team == "Carlton"                ~ "CAR",
+                              player_team == "Sydney"                 ~ "SYD",
+                              player_team == "Gold Coast"             ~ "GCS",
+                              player_team == "Greater Western Sydney" ~ "GWS",
+                              player_team == "Melbourne"              ~ "MEL",
+                              player_team == "Western Bulldogs"       ~ "WBD",
+                              player_team == "West Coast"             ~ "WCE",
+                              player_team == "St Kilda"               ~ "STK",
+                              player_team == "Adelaide"               ~ "ADE",
+                              player_team == "Port Adelaide"          ~ "POR",
+                              player_team == "Richmond"               ~ "RIC") ,
+      # update positions
+      position_new = case_when(player_position == "BPR" ~ "GenD",
+                               player_position == "R"   ~ "Mid",
+                               player_position == "FPR" ~ "GenF",
+                               player_position == "C"   ~ "Mid",
+                               player_position == "INT" ~ "Int",
+                               player_position == "FF"  ~ "KeyF",
+                               player_position == "WR"  ~ "Wing",
+                               player_position == "RK"  ~ "Ruck",
+                               player_position == "RR"  ~ "Mid",
+                               player_position == "HFFL"~ "GenF",
+                               player_position == "BPL" ~ "GenD",
+                               player_position == "FPL" ~ "GenF",
+                               player_position == "FB"  ~ "KeyD",
+                               player_position == "CHF" ~ "KeyF",
+                               player_position == "CHB" ~ "KeyD",
+                               player_position == "HBFL"~ "GenD",
+                               player_position == "WL"  ~ "Wing",
+                               player_position == "HFFR"~ "GenF",
+                               player_position == "BPR" ~ "GenD",
+                               player_position == "HBFR"~ "GenD",
+                               player_position == "SUB" ~ "Sub"),
       # create season and helper variables 
          season = year(match_date),
-         helper = paste0(player,"_", season,"_", round,"_",player_team)) %>%
+         helper = paste0(player,"_", season,"_", round,"_",player_team)) 
+ 
+   
       
-      # format variable names           
-         select(helper, 
-           id = player_id,
-           player,
-           first_name = player_first_name,
-           surname = player_last_name,
-           specific_position = player_position,
-           height = player_height_cm,
-           weight = player_weight_kg,
-           jumper_number = guernsey_number,
-           season,
-           round,
-           team = player_team,
-           match_id,
-           date = match_date,
-           start_time = match_local_time,
-           venue = venue_name,
-           attendance = match_home_team,
-           away_team = match_away_team,
-           home_score = match_home_team_score,
-           away_score = match_away_team_score,
-           weather_type = match_weather_temp_c,
-           temp = match_weather_temp_c, 
-           dfs_score = afl_fantasy_score,
-           supercoach = supercoach_score,
-           rating_points,
-           kicks,
-           handballs,
-           marks,
-           tackles,
-           hitouts,
-           goals,
-           behinds,
-           FF = free_kicks_for,
-           FA = free_kicks_against,
-           disposals,
-           effective_disposals,
-           effective_kicks,
-           disposal_efficiency = disposal_efficiency_percentage,
-           CP = contested_possessions,
-           UP = uncontested_possessions, 
-           f50_ground_ball_gets,
-           ground_ball_gets,
-           clangers,
-           turnovers,
-           intercepts,
-           ruck_contests,
-           hitouts_to_advantage,
-           hitout_win_percentage,
-           contested_marks,
-           marks_I50 = marks_inside_fifty,
-           intercept_marks,
-           marks_on_lead,
-           clearances,
-           centre_clearances,
-           stoppage_clearances,
-           R50 = rebounds,
-           I50 = inside_fifties,
-           score_involvements,
-           score_launches,
-           shots_at_goal,
-           goal_assists,
-           metres_gained,
-           one_percenters, 
-           bounces,
-           spoils,
-           TOG = time_on_ground_percentage,
-           pressure_acts,
-           tackles_inside_fifty,
-           contest_def_losses,
-           contest_def_one_on_ones,
-           contest_off_one_on_ones,
-           contest_off_wins,
-           def_half_pressure_acts,
-           brownlow_votes, 
-           everything())
+      # # format variable names           
+      #    select(helper = helper, 
+      #      id = player_id,
+      #      player,
+      #      first_name = player_first_name,
+      #      surname = player_last_name,
+      #      specific_position = player_position,
+      #      height = player_height_cm,
+      #      weight = player_weight_kg,
+      #      jumper_number = guernsey_number,
+      #      season,
+      #      round,
+      #      team = player_team,
+      #      match_id,
+      #      date = match_date,
+      #      start_time = match_local_time,
+      #      venue = venue_name,
+      #      attendance = match_home_team,
+      #      away_team = match_away_team,
+      #      home_score = match_home_team_score,
+      #      away_score = match_away_team_score,
+      #      weather_type = match_weather_temp_c,
+      #      temp = match_weather_temp_c, 
+      #      dfs_score = afl_fantasy_score,
+      #      supercoach = supercoach_score,
+      #      rating_points,
+      #      kicks,
+      #      handballs,
+      #      marks,
+      #      tackles,
+      #      hitouts,
+      #      goals,
+      #      behinds,
+      #      FF = free_kicks_for,
+      #      FA = free_kicks_against,
+      #      disposals,
+      #      effective_disposals,
+      #      effective_kicks,
+      #      disposal_efficiency = disposal_efficiency_percentage,
+      #      CP = contested_possessions,
+      #      UP = uncontested_possessions, 
+      #      f50_ground_ball_gets,
+      #      ground_ball_gets,
+      #      clangers,
+      #      turnovers,
+      #      intercepts,
+      #      ruck_contests,
+      #      hitouts_to_advantage,
+      #      hitout_win_percentage,
+      #      contested_marks,
+      #      marks_I50 = marks_inside_fifty,
+      #      intercept_marks,
+      #      marks_on_lead,
+      #      clearances,
+      #      centre_clearances,
+      #      stoppage_clearances,
+      #      R50 = rebounds,
+      #      I50 = inside_fifties,
+      #      score_involvements,
+      #      score_launches,
+      #      shots_at_goal,
+      #      goal_assists,
+      #      metres_gained,
+      #      one_percenters, 
+      #      bounces,
+      #      spoils,
+      #      TOG = time_on_ground_percentage,
+      #      pressure_acts,
+      #      tackles_inside_fifty,
+      #      contest_def_losses,
+      #      contest_def_one_on_ones,
+      #      contest_off_one_on_ones,
+      #      contest_off_wins,
+      #      def_half_pressure_acts,
+      #      brownlow_votes, 
+      #      everything())
   
   
-  # Filter out player name and surname form player_info dataframe, only need position and id
-  player_info <- player_info %>% select(id = player_id, position)
-  
-  # merge player_info into player_stats_merged
-  player_stats_merged <- merge(player_info, player_stats, by = "id")
-                                                     
+  # # Filter out player name and surname form player_info dataframe, only need position and id
+  # player_info <- player_info %>% select(id = player_id, position)
+  # 
+  # # merge player_info into player_stats_merged
+  # player_stats_merged <- merge(player_info, player_stats, by = "id")
+  #                                                    
 
   
   
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   }
+
+
+
+
+
+
+
+
+
+
+
+
 
 #############################
 # GET DATA FROM MYSQL DATABSE
@@ -531,8 +577,9 @@ GetDataCleanMySQL <- function() {
                             Team == "Brisbane" ~ "Brisbane Lions",
                             TRUE ~ Team),
            # creates helper to bind to player_stats
-           helper = paste0(Player,"_",Season,"_",Round,"_",Team)) %>%      
-    select(helper,                                                # select on variables that are not duplicates in player_stats
+           helper = paste0(Player,"_",Season,"_",Round,"_",Team)) %>%  
+    filter(unique(helper)) %>%
+    select(helper,                              # select on variables that are not duplicates in player_stats
            Status, 
            Match_id, 
            ED, 

@@ -1,0 +1,14 @@
+name: Brownlow-Model
+title: Brownlow-Model
+username:
+account: ryanhodder
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4564076
+bundleId: 5038709
+url: https://supercoachoptimizer.shinyapps.io/Brownlow-Model/
+when: 1631783192.78507
+lastSyncTime: 1631783192.78507
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Brownlow Model Bets.xlsx|brownlow_model_2021|coaches_votes.RData|coaches_votes_clean.csv|coaches_votes_clean.xlsx|coaches_votes_clean2.csv|coaches_votes_clean2.xlsx|coaches_votes_clean3.csv|first_script.Rmd|Functions/games_played_Function.R|Functions/get_data_and_clean_Function.R|google_search_analysis.R|model 2.RData|model_v1.RData|model_v3.RData|model_v4.RData|model_v5.RData|model_v6.RData|scraping_test.R|twitter_search_analysis.R
