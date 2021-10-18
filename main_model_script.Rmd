@@ -9,6 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 # IDEAS FOR 2022
+- How to measure "FAIRNESS"
+-     Umpires said they dont see stats, and just judge best and fairest     
 - Clutch plays
 - Exepcted goals (players scoring harder goals)
 - Supercoach points, and SC points in a row or during periods of close margin
